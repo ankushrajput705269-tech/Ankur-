@@ -1,0 +1,63 @@
+
+name: Build Starfall Archers APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - apk/android-webview
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout game
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare game
+        run: |
+          mkdir -p www
+          if [ -f index.html ]; then
+            cp index.html www/index.html
+          elif [ -f "Starfall_Archers (9).html" ]; then
+            cp "Starfall_Archers (9).html" www/index.html
+          else
+            echo "Game HTML file not found"
+            exit 1
+          fi
+
+      - name: Create Android project
+        run: |
+          npm init -y
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+          npx cap init "Starfall Archers" "com.ankur.starfallarchers" --web-dir www
+          npx cap add android
+          npx cap sync android
+
+      - name: Build APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Starfall-Archers-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
